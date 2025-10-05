@@ -1,14 +1,13 @@
 import React from 'react';
 import { Navbar as BootstrapNavbar, Nav } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { clearToken } from '../slices/authSlice';
 import '../CSS/Navbar.css';
 
-
-
 function Navbar() {
   const dispatch = useDispatch();
+  const token = useSelector((state) => state.auth.token);
 
   const handleLogout = () => {
     dispatch(clearToken());
@@ -27,7 +26,12 @@ function Navbar() {
           <Nav.Link as={Link} to="/interactions">Interactions</Nav.Link>
           <Nav.Link as={Link} to="/tasks">Tasks</Nav.Link>
           <Nav.Link as={Link} to="/settings">Settings</Nav.Link>
-          <Nav.Link onClick={handleLogout} as={Link} to="/login">LogIn</Nav.Link>
+
+          {token ? (
+            <Nav.Link onClick={handleLogout} as={Link} to="/login">Logout</Nav.Link>
+          ) : (
+            <Nav.Link as={Link} to="/login">Login</Nav.Link>
+          )}
         </Nav>
       </BootstrapNavbar.Collapse>
     </BootstrapNavbar>
