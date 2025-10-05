@@ -23,3 +23,5 @@ cloudinary==1.41.0
 # Utilities
 asgiref==3.7.2
 sqlparse==0.4.4
+#for login system
+itsdangerous==2.1.2

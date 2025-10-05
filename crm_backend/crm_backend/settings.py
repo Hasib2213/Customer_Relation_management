@@ -6,6 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'admin12345'
 DEBUG = True
 ALLOWED_HOSTS = ['*']
+AUTH_USER_MODEL = 'core.CustomUser'  # Custom user model
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -65,7 +66,7 @@ WSGI_APPLICATION = 'crm_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'crm_db',
+        'NAME': 'crm_db2',
         'USER': 'postgres',
         'PASSWORD': '1111',
         'HOST': 'localhost',
@@ -95,6 +96,29 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+  # Custom user model
+
+
+
+
+#add for login system
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+}
+
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'hasibulislam2212@gmail.com'
+EMAIL_HOST_PASSWORD = 'fsey roty xyig ziyn'  # use app password, not your normal password
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
 
 
 

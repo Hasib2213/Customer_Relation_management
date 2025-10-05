@@ -4,7 +4,6 @@ from rest_framework.response import Response
 from django.db.models import Count, Sum
 from .models import *
 from .serializers import *
-from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.sites.shortcuts import get_current_site
@@ -15,6 +14,9 @@ from django.core.mail import EmailMessage
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.hashers import make_password
 from rest_framework.permissions import IsAuthenticated,AllowAny    
+from rest_framework.decorators import api_view, permission_classes
+from django.contrib.auth import get_user_model
+from .utils import generate_verification_token, verify_token, send_verification_email
 
 
 
@@ -68,4 +70,40 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer    
 
+#for login system
 
+User = get_user_model()
+
+@api_view(['POST'])
+def signup(request):
+    username = request.data.get('username')
+    email = request.data.get('email')
+    password = request.data.get('password')
+
+    if User.objects.filter(username=username).exists():
+        return Response({'error': 'Username already exists'}, status=400)
+    if User.objects.filter(email=email).exists():
+        return Response({'error': 'Email already registered'}, status=400)
+
+    user = User.objects.create_user(username=username, email=email, password=password)
+    user.is_active = False  # cannot login until verified
+    user.save()
+
+    token = generate_verification_token(email)
+    send_verification_email(email, token)
+
+    return Response({'message': 'Verification email sent! Please check your inbox.'}, status=201)
+
+@api_view(['GET'])
+def verify_email(request, token):
+    email = verify_token(token)
+    if not email:
+        return Response({'error': 'Invalid or expired token'}, status=400)
+    try:
+        user = User.objects.get(email=email)
+        user.is_active = True
+        user.is_verified = True
+        user.save()
+        return Response({'message': 'Email verified successfully! You can now log in.'})
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=404)
