@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Table, Button, Container, Form, Modal } from "react-bootstrap";
 import axios from "axios";
+import { useSelector } from "react-redux";
 
 function Contacts() {
+  const { access } = useSelector((state) => state.auth); // ✅ Get access token from Redux
   const [contacts, setContacts] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -20,35 +22,39 @@ function Contacts() {
     last_contact_date: "",
   });
 
-  const token = localStorage.getItem("token");
-
-  // Fetch contacts and companies
-  const fetchContacts = () => {
-    if (!token) return;
-    axios
-      .get("http://127.0.0.1:8000/api/contacts/", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => setContacts(res.data.results || res.data))
-      .catch((err) => console.error(err));
+  // ✅ Fetch contacts
+  const fetchContacts = async () => {
+    if (!access) return;
+    try {
+      const res = await axios.get("http://127.0.0.1:8000/api/contacts/", {
+        headers: { Authorization: `Bearer ${access}` },
+      });
+      setContacts(res.data.results || res.data);
+    } catch (err) {
+      console.error("Error fetching contacts:", err);
+    }
   };
 
-  const fetchCompanies = () => {
-    if (!token) return;
-    axios
-      .get("http://127.0.0.1:8000/api/companies/", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => setCompanies(res.data.results || res.data))
-      .catch((err) => console.error(err));
+  // ✅ Fetch companies
+  const fetchCompanies = async () => {
+    if (!access) return;
+    try {
+      const res = await axios.get("http://127.0.0.1:8000/api/companies/", {
+        headers: { Authorization: `Bearer ${access}` },
+      });
+      setCompanies(res.data.results || res.data);
+    } catch (err) {
+      console.error("Error fetching companies:", err);
+    }
   };
 
+  // ✅ Load data on mount
   useEffect(() => {
     fetchContacts();
     fetchCompanies();
-  }, []);
+  }, [access]);
 
-  // Open modal for add or edit
+  // ✅ Open modal for Add/Edit
   const handleShow = (contact = null) => {
     if (contact) {
       setEditingContact(contact);
@@ -89,47 +95,49 @@ function Contacts() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Submit add or update
-  const handleSubmit = (e) => {
+  // ✅ Add or Update Contact
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!token) return;
+    if (!access) return;
 
     const payload = { ...formData, company: formData.company || null };
 
-    if (editingContact) {
-      axios
-        .put(`http://127.0.0.1:8000/api/contacts/${editingContact.id}/`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        .then(() => {
-          fetchContacts();
-          handleClose();
-        })
-        .catch((err) => console.error(err));
-    } else {
-      axios
-        .post("http://127.0.0.1:8000/api/contacts/", payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        .then(() => {
-          fetchContacts();
-          handleClose();
-        })
-        .catch((err) => console.error(err));
+    try {
+      if (editingContact) {
+        // Update contact
+        await axios.put(
+          `http://127.0.0.1:8000/api/contacts/${editingContact.id}/`,
+          payload,
+          {
+            headers: { Authorization: `Bearer ${access}` },
+          }
+        );
+      } else {
+        // Add new contact
+        await axios.post("http://127.0.0.1:8000/api/contacts/", payload, {
+          headers: { Authorization: `Bearer ${access}` },
+        });
+      }
+      fetchContacts();
+      handleClose();
+    } catch (err) {
+      console.error("Error saving contact:", err);
     }
   };
 
-  // Delete contact
-  const handleDelete = (id) => {
-    if (!token) return;
+  // ✅ Delete contact
+  const handleDelete = async (id) => {
+    if (!access) return;
     if (!window.confirm("Are you sure you want to delete this contact?")) return;
 
-    axios
-      .delete(`http://127.0.0.1:8000/api/contacts/${id}/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then(() => fetchContacts())
-      .catch((err) => console.error(err));
+    try {
+      await axios.delete(`http://127.0.0.1:8000/api/contacts/${id}/`, {
+        headers: { Authorization: `Bearer ${access}` },
+      });
+      fetchContacts();
+    } catch (err) {
+      console.error("Error deleting contact:", err);
+    }
   };
 
   return (
@@ -140,7 +148,7 @@ function Contacts() {
         Add Contact
       </Button>
 
-      <Table striped bordered hover>
+      <Table striped bordered hover responsive>
         <thead>
           <tr>
             <th>ID</th>
@@ -170,10 +178,18 @@ function Contacts() {
               <td>{contact.last_contact_date || "-"}</td>
               <td>{contact.notes}</td>
               <td>
-                <Button variant="warning" size="sm" onClick={() => handleShow(contact)}>
+                <Button
+                  variant="warning"
+                  size="sm"
+                  onClick={() => handleShow(contact)}
+                >
                   Edit
                 </Button>{" "}
-                <Button variant="danger" size="sm" onClick={() => handleDelete(contact.id)}>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => handleDelete(contact.id)}
+                >
                   Delete
                 </Button>
               </td>
@@ -182,21 +198,32 @@ function Contacts() {
         </tbody>
       </Table>
 
-      {/* Modal */}
+      {/* ✅ Add/Edit Modal */}
       <Modal show={showModal} onHide={handleClose}>
         <Modal.Header closeButton>
-          <Modal.Title>{editingContact ? "Edit Contact" : "Add Contact"}</Modal.Title>
+          <Modal.Title>
+            {editingContact ? "Edit Contact" : "Add Contact"}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-2">
               <Form.Label>Full Name</Form.Label>
-              <Form.Control name="full_name" value={formData.full_name} onChange={handleChange} required />
+              <Form.Control
+                name="full_name"
+                value={formData.full_name}
+                onChange={handleChange}
+                required
+              />
             </Form.Group>
 
             <Form.Group className="mb-2">
               <Form.Label>Company</Form.Label>
-              <Form.Select name="company" value={formData.company} onChange={handleChange}>
+              <Form.Select
+                name="company"
+                value={formData.company}
+                onChange={handleChange}
+              >
                 <option value="">-- Select Company --</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -208,33 +235,40 @@ function Contacts() {
 
             <Form.Group className="mb-2">
               <Form.Label>Email</Form.Label>
-              <Form.Control type="email" name="email" value={formData.email} onChange={handleChange} required />
+              <Form.Control
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+              />
             </Form.Group>
 
             <Form.Group className="mb-2">
-  <Form.Label>Last Contact Date</Form.Label>
-  <Form.Control
-    type="date"
-    name="last_contact_date"
-    value={formData.last_contact_date || ""}
-    onChange={handleChange}
-  />
-</Form.Group>
-
-
-            <Form.Group className="mb-2">
               <Form.Label>Phone</Form.Label>
-              <Form.Control name="phone" value={formData.phone} onChange={handleChange} />
+              <Form.Control
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+              />
             </Form.Group>
 
             <Form.Group className="mb-2">
               <Form.Label>Role Title</Form.Label>
-              <Form.Control name="role_title" value={formData.role_title} onChange={handleChange} />
+              <Form.Control
+                name="role_title"
+                value={formData.role_title}
+                onChange={handleChange}
+              />
             </Form.Group>
 
             <Form.Group className="mb-2">
               <Form.Label>Source</Form.Label>
-              <Form.Select name="source" value={formData.source} onChange={handleChange}>
+              <Form.Select
+                name="source"
+                value={formData.source}
+                onChange={handleChange}
+              >
                 <option value="referral">Referral</option>
                 <option value="web">Web</option>
                 <option value="cold_outreach">Cold Outreach</option>
@@ -244,7 +278,11 @@ function Contacts() {
 
             <Form.Group className="mb-2">
               <Form.Label>Status</Form.Label>
-              <Form.Select name="status" value={formData.status} onChange={handleChange}>
+              <Form.Select
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+              >
                 <option value="lead">Lead</option>
                 <option value="prospect">Prospect</option>
                 <option value="client">Client</option>
@@ -252,8 +290,24 @@ function Contacts() {
             </Form.Group>
 
             <Form.Group className="mb-2">
+              <Form.Label>Last Contact Date</Form.Label>
+              <Form.Control
+                type="date"
+                name="last_contact_date"
+                value={formData.last_contact_date || ""}
+                onChange={handleChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-2">
               <Form.Label>Notes</Form.Label>
-              <Form.Control as="textarea" rows={2} name="notes" value={formData.notes} onChange={handleChange} />
+              <Form.Control
+                as="textarea"
+                rows={2}
+                name="notes"
+                value={formData.notes}
+                onChange={handleChange}
+              />
             </Form.Group>
 
             <Button variant="success" type="submit">

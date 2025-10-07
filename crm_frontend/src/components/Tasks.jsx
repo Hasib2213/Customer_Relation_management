@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Table, Button, Container, Modal, Form } from "react-bootstrap";
 import axios from "axios";
+import { useSelector } from "react-redux";
 
 function Tasks() {
+  const { access } = useSelector((state) => state.auth); // ✅ Get access token from Redux
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -14,26 +16,37 @@ function Tasks() {
     owner: "",
   });
 
-  const token = localStorage.getItem("token");
+  // ✅ Fetch tasks
+  const fetchTasks = async () => {
+    if (!access) return;
+    try {
+      const res = await axios.get("/api/tasks/", {
+        headers: { Authorization: `Bearer ${access}` },
+      });
+      setTasks(res.data.results || res.data);
+    } catch (err) {
+      console.error("Error fetching tasks:", err);
+    }
+  };
 
+  // ✅ Fetch users
+  const fetchUsers = async () => {
+    if (!access) return;
+    try {
+      const res = await axios.get("/api/users/", {
+        headers: { Authorization: `Bearer ${access}` },
+      });
+      setUsers(res.data.results || res.data);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+    }
+  };
+
+  // ✅ Load data on mount or when access changes
   useEffect(() => {
     fetchTasks();
     fetchUsers();
-  }, []);
-
-  const fetchTasks = () => {
-    axios
-      .get("/api/tasks/", { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => setTasks(res.data))
-      .catch(err => console.error(err));
-  };
-
-  const fetchUsers = () => {
-    axios
-      .get("/api/users/", { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => setUsers(res.data))
-      .catch(err => console.error(err));
-  };
+  }, [access]);
 
   const handleShow = (task = null) => {
     if (task) {
@@ -65,10 +78,10 @@ function Tasks() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!access) return;
 
-    // Prepare payload
     const payload = {
       description: formData.description,
       due_date: formData.due_date,
@@ -76,32 +89,37 @@ function Tasks() {
       owner: formData.owner ? parseInt(formData.owner) : null,
     };
 
-    const config = { headers: { Authorization: `Bearer ${token}` } };
-
-    if (editingTask) {
-      axios
-        .put(`/api/tasks/${editingTask.id}/`, payload, config)
-        .then(() => {
-          fetchTasks();
-          handleClose();
-        })
-        .catch(err => console.error("Update error:", err.response?.data || err));
-    } else {
-      axios
-        .post("/api/tasks/", payload, config)
-        .then(() => {
-          fetchTasks();
-          handleClose();
-        })
-        .catch(err => console.error("Create error:", err.response?.data || err));
+    try {
+      if (editingTask) {
+        // Update task
+        await axios.put(`/api/tasks/${editingTask.id}/`, payload, {
+          headers: { Authorization: `Bearer ${access}` },
+        });
+      } else {
+        // Create task
+        await axios.post("/api/tasks/", payload, {
+          headers: { Authorization: `Bearer ${access}` },
+        });
+      }
+      fetchTasks();
+      handleClose();
+    } catch (err) {
+      console.error("Error saving task:", err.response?.data || err);
     }
   };
 
-  const handleDelete = (id) => {
-    axios
-      .delete(`/api/tasks/${id}/`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(() => fetchTasks())
-      .catch(err => console.error(err));
+  const handleDelete = async (id) => {
+    if (!access) return;
+    if (!window.confirm("Are you sure you want to delete this task?")) return;
+
+    try {
+      await axios.delete(`/api/tasks/${id}/`, {
+        headers: { Authorization: `Bearer ${access}` },
+      });
+      fetchTasks();
+    } catch (err) {
+      console.error("Error deleting task:", err);
+    }
   };
 
   return (
@@ -193,4 +211,3 @@ function Tasks() {
 }
 
 export default Tasks;
-  

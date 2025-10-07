@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Container, Row, Col } from 'react-bootstrap';
+import { Container } from 'react-bootstrap';
 import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
 import Contacts from './components/Contacts';
@@ -10,14 +10,17 @@ import Interactions from './components/Interactions';
 import Tasks from './components/Tasks';
 import Settings from './components/Settings';
 import Login from './components/Login';
+import Signup from './components/Signup';
+import VerifyEmail from './components/VerifyEmail';
+import Footer from './components/Footer';
 
 function App() {
   return (
     <Router>
-      <Navbar />
-      <Container fluid>
-        <Row>
-          <Col>
+      <div className="d-flex flex-column min-vh-100">
+        <Navbar />
+        <main className="flex-grow-1">
+          <Container fluid className="mt-3 px-2 px-sm-3 px-md-4">
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/contacts" element={<Contacts />} />
@@ -27,10 +30,13 @@ function App() {
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/verify-email/:token" element={<VerifyEmail />} />
             </Routes>
-          </Col>
-        </Row>
-      </Container>
+          </Container>
+        </main>
+        <Footer />
+      </div>
     </Router>
   );
 }

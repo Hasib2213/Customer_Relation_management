@@ -72,38 +72,88 @@ class UserViewSet(viewsets.ModelViewSet):
 
 #for login system
 
-User = get_user_model()
+# User = get_user_model()
+
+# @api_view(['POST'])
+# def signup(request):
+#     username = request.data.get('username')
+#     email = request.data.get('email')
+#     password = request.data.get('password')
+
+#     if User.objects.filter(username=username).exists():
+#         return Response({'error': 'Username already exists'}, status=400)
+#     if User.objects.filter(email=email).exists():
+#         return Response({'error': 'Email already registered'}, status=400)
+
+#     user = User.objects.create_user(username=username, email=email, password=password)
+#     user.is_active = False  # cannot login until verified
+#     user.save()
+
+#     token = generate_verification_token(email)
+#     send_verification_email(email, token)
+
+#     return Response({'message': 'Verification email sent! Please check your inbox.'}, status=201)
+
+# @api_view(['GET'])
+# def verify_email(request, token):
+#     email = verify_token(token)
+#     if not email:
+#         return Response({'error': 'Invalid or expired token'}, status=400)
+#     try:
+#         user = User.objects.get(email=email)
+#         user.is_active = True
+#         user.is_verified = True
+#         user.save()
+#         return Response({'message': 'Email verified successfully! You can now log in.'})
+#     except User.DoesNotExist:
+#         return Response({'error': 'User not found'}, status=404)
+    
+
+
+
+#email verification system
+
+@api_view(['GET'])
+def verify_email(request, token):
+    email = verify_token(token)
+    if email:
+        try:
+            user = CustomUser.objects.get(email=email)
+            if not user.is_verified:
+                user.is_verified = True
+                user.is_active = True  # Activate the user account
+                user.save()
+                return Response({"message": "Email verified successfully!"}, status=status.HTTP_200_OK)
+            else:
+                return Response({"message": "Email already verified."}, status=status.HTTP_200_OK)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+    else:
+        return Response({"error": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 def signup(request):
     username = request.data.get('username')
     email = request.data.get('email')
     password = request.data.get('password')
-
-    if User.objects.filter(username=username).exists():
-        return Response({'error': 'Username already exists'}, status=400)
-    if User.objects.filter(email=email).exists():
-        return Response({'error': 'Email already registered'}, status=400)
-
-    user = User.objects.create_user(username=username, email=email, password=password)
-    user.is_active = False  # cannot login until verified
-    user.save()
-
+    
+    if not all([username, email, password]):
+        return Response({"error": "All fields are required."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if CustomUser.objects.filter(email=email).exists():
+        return Response({"error": "Email already exists."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Create inactive user
+    user = CustomUser.objects.create_user(
+        username=username,
+        email=email,
+        password=password,
+        is_active=False,  # User is inactive until verified
+        is_verified=False
+    )
+    
+    # Generate and send verification email
     token = generate_verification_token(email)
     send_verification_email(email, token)
-
-    return Response({'message': 'Verification email sent! Please check your inbox.'}, status=201)
-
-@api_view(['GET'])
-def verify_email(request, token):
-    email = verify_token(token)
-    if not email:
-        return Response({'error': 'Invalid or expired token'}, status=400)
-    try:
-        user = User.objects.get(email=email)
-        user.is_active = True
-        user.is_verified = True
-        user.save()
-        return Response({'message': 'Email verified successfully! You can now log in.'})
-    except User.DoesNotExist:
-        return Response({'error': 'User not found'}, status=404)
+    
+    return Response({"message": "User created. Please check your email to verify."}, status=status.HTTP_201_CREATED)
